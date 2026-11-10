@@ -1,6 +1,10 @@
 # Flexible Visual Recommendation
 
-A local tool for comparing images against a rubric you define. Choose a vision model, score a batch of images, and browse the results on a canvas. The starter rubric uses aesthetics, creativity, and fit to the brief. You can change the dimensions and their prompts for any image collection.
+**Visualizing the Imaginative**
+
+Selecting preferred images from large collections of AI-generated content remains challenging, particularly in subjective and speculative contexts. Flexible Visual Recommendation helps people explore these collections by connecting scores from a user-defined rubric to an interactive canvas.
+
+Users define what matters in their design brief, choose a scoring dimension as the canvas axis, and compare images across the score range. They can inspect the visual evidence behind each model score and build a shortlist based on their own judgment. The included SuperFruit dataset illustrates the workflow with speculative fruit designs.
 
 ## Quick start
 
