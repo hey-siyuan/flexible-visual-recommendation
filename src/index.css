@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Increase type without changing the interface's structural dimensions. */
+.visual-app .text-\[10px\] {
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.visual-app .text-xs {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.visual-app .text-sm {
+  font-size: 18px;
+  line-height: 25px;
+}
+
+.visual-app .text-base {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.visual-app .text-lg {
+  font-size: 22px;
+  line-height: 30px;
+}
+
+.visual-app .setup-sidebar .text-xs {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.visual-app .setup-sidebar .text-sm {
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.visual-app .setup-sidebar .text-lg {
+  font-size: 19px;
+  line-height: 26px;
+}
+
+.scoring-progress::-webkit-progress-bar {
+  background: white;
+}
+
+.scoring-progress::-webkit-progress-value {
+  border-radius: 9999px;
+  background: #6b7280;
+}
+
+.scoring-progress::-moz-progress-bar {
+  border-radius: 9999px;
+  background: #6b7280;
+}
+
+.workspace {
+  background: radial-gradient(ellipse at 14% 2%, #ede7ff 0%, transparent 49%),
+    radial-gradient(ellipse at 94% 5%, #e8f0ff 0%, transparent 48%), #f7f8fc;
+}
+
+.workspace-title {
+  font-size: 17px;
+  line-height: 23px;
+  letter-spacing: -0.035em;
+}
+
+.workspace-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid rgb(255 255 255 / 90%);
+  border-radius: 0.75rem;
+  color: #5b34ac;
+  background: linear-gradient(145deg, #fff 5%, #e8ddff 100%);
+  box-shadow: 0 5px 16px rgb(99 64 170 / 15%);
+}
+
+.glass-surface {
+  border: 1px solid rgb(255 255 255 / 94%);
+  background: rgb(252 251 255 / 88%);
+  backdrop-filter: blur(18px) saturate(125%);
+  box-shadow: 0 16px 48px rgb(44 35 83 / 15%), inset 0 0 0 1px rgb(137 112 213 / 10%);
+}
+
+.image-tile {
+  box-shadow: 0 4px 14px rgb(54 40 90 / 10%);
+}
+
+.image-tile-active {
+  border-color: #a785ec;
+  box-shadow: 0 0 0 2px rgb(145 108 231 / 33%), 0 0 18px rgb(142 91 247 / 33%), 0 12px 28px rgb(54 40 90 / 19%);
+}
+
+.image-tile-selected {
+  border-width: 3px;
+  border-color: #ed7819;
+  box-shadow: 0 0 0 1px rgb(255 168 63 / 55%), 0 0 18px rgb(246 125 23 / 48%), 0 8px 24px rgb(170 81 16 / 18%);
+}
+
+.profile-radar {
+  height: clamp(7.5rem, 24dvh, 10rem);
+}
+
+.rules-dialog {
+  width: min(46rem, calc(100% - 2rem));
+}
+
+.welcome-dialog {
+  width: min(34rem, calc(100% - 2rem));
+  max-height: 90dvh;
+}
+
+.rules-dialog::backdrop {
+  background: rgb(32 23 62 / 29%);
+  backdrop-filter: blur(5px);
+}
