@@ -50,6 +50,14 @@ API scoring sends the images, rubric, and optional design brief to the selected 
 4. Hover over an image to enlarge it, or click it to see its scores and evidence. The profile uses a radar chart for three or more dimensions and score bars for one or two. Use **Mark as Selected** to shortlist an image.
 5. Change the axis to explore an existing result, pinch or use the canvas controls to zoom, and drag the canvas to pan. Use **Export Report** to save the batch settings, scores, evidence, ranks, layout, and shortlist as JSON. Export before reloading to retain the results.
 
+### Try the included images
+
+The [IV-SI-Dataset](./IV-SI-Dataset) folder contains 405 SuperFruit PNG images (about 387 MiB). For a quick first run, choose these three files and enter a brief such as “Explore imaginative fruit designs that still look recognizable and appetizing.”
+
+- `1-P-1_20251112_105139.png`
+- `2-P-1_20251112_105140.png`
+- `LM-P-1_20251112_105138.png`
+
 ### Write a rubric
 
 Use plain text for a single dimension score, or define criteria to score separately. For example, a poster review might use **Legibility** as a dimension with this prompt:
