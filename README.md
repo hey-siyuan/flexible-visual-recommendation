@@ -2,7 +2,7 @@
 
 **Visualizing the Imaginative**
 
-Selecting preferred images from large collections of AI-generated content remains challenging, particularly in subjective and speculative contexts. Flexible Visual Recommendation helps people explore these collections by connecting scores from a user-defined rubric to an interactive canvas.
+Selecting preferred images from large collections of AI-generated content remains challenging, particularly in subjective and speculative contexts. Flexible Visual Recommendation helps creative practitioners explore these collections by connecting scores from a user-defined rubric to an interactive canvas.
 
 Users define what matters in their design brief, choose a scoring dimension as the canvas axis, and compare images across the score range. They can inspect the visual evidence behind each model score and build a shortlist based on their own judgment. The included SuperFruit dataset illustrates the workflow with speculative fruit designs.
 
