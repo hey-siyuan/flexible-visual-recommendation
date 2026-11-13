@@ -75,9 +75,9 @@ For a dimension with recognized criteria, the model returns a 1–6 score and vi
 
 ### Read the canvas
 
-The horizontal center of each card and its base size increase linearly with the selected dimension's score on the 1–6 scale. Vertical position is computed by the packing algorithm and carries no score. Cards tied on the axis can overlap slightly, with higher sums across the other dimensions drawn in front. The rank is one plus the number of successfully scored images in the batch with a strictly higher axis score. Equal scores share a rank.
+The horizontal center of each card and its base size increase linearly with the selected dimension's score on the 1–6 scale. Vertical position is computed by the packing algorithm and carries no score. Cards tied on the axis can overlap slightly. Ordinary cards are drawn in increasing order of the sum of all dimension scores, so higher totals appear in front. The rank is one plus the number of successfully scored images in the batch with a strictly higher axis score. Equal scores share a rank.
 
-Hovered and shortlisted cards grow to the largest base card size in the batch. Shortlisted cards stay above the regular cards and use the sum of all dimension scores to determine their order within the shortlist.
+Hovered and shortlisted cards grow to the largest base card size in the batch. Shortlisted cards stay above the regular cards and use the sum of all dimension scores to determine their order within the shortlist. The hovered, keyboard-focused, or inspected card temporarily appears above both groups. When inspection ends, it returns to its shortlist or ordinary layer.
 
 ## Configuration
 

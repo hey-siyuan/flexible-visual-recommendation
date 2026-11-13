@@ -116,8 +116,8 @@ export function layoutScoredImages(images, axisWidth, cardSides, axisId = 'aesth
     return 0;
   });
 
-  // Paint lower secondary totals first within a tie. Stable IDs break exact ties.
-  const paintOrder = [...placementOrder].sort((a, b) => a.axisScore - b.axisScore || a.secondaryTotal - b.secondaryTotal);
+  // Paint lower totals first across all dimensions. Stable IDs break exact ties.
+  const paintOrder = [...placementOrder].sort((a, b) => (a.axisScore + a.secondaryTotal) - (b.axisScore + b.secondaryTotal));
   for (const [index, card] of paintOrder.entries()) card.stackOrder = index + 1;
 
   const placedCards = [];

@@ -694,7 +694,11 @@ export default function VisualRecommendationApp() {
                             top: image.y * zoom,
                             width: image.size * zoom,
                             height: image.size * zoom,
-                            zIndex: selectedLayer ?? (enlarged ? layout.items.length + 1 : image.stackOrder),
+                            // Active inspection is above the shortlist; the shortlist is
+                            // above ordinary cards, with total-score order within each group.
+                            zIndex: viewing || image.id === previewId
+                              ? layout.items.length * 2 + 3
+                              : selectedLayer ?? image.stackOrder,
                           }}
                           onPointerEnter={event => {
                             if (event.pointerType === 'touch') return;
