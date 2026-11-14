@@ -52,7 +52,7 @@ API scoring sends the images, rubric, and optional design brief to the selected 
 2. Under **Scoring dimensions**, define one to eight dimensions, each with its own name and prompt. Choose which dimension goes on the horizontal axis. The combined prompts can contain up to 10,000 characters.
 3. Add JPEG, PNG, or WebP images up to 10 MB each and click **Execute Evaluation**. The progress indicator tracks the batch. Retries use the original provider, model, and rubric, with the key currently entered for that provider.
 4. Hover over an image to enlarge it, or click it to see its scores and evidence. The profile uses a radar chart for three or more dimensions and score bars for one or two. Use **Mark as Selected** to shortlist an image.
-5. Change the axis to explore an existing result, pinch or use the canvas controls to zoom, and drag the canvas to pan. Use **Export Report** to save the batch settings, scores, evidence, ranks, layout, and shortlist as JSON. Export before reloading to retain the results.
+5. Results automatically fit the available canvas when scoring finishes. Switching the axis or resizing the window fits the new layout again. Pinch or use the canvas controls to zoom, drag to pan, and choose **Fit all** to return to the complete overview. Use **Export Report** to save the batch settings, scores, evidence, ranks, layout, and shortlist as JSON. Export before reloading to retain the results.
 
 ### Try the included images
 
@@ -75,9 +75,11 @@ For a dimension with recognized criteria, the model returns a 1–6 score and vi
 
 ### Read the canvas
 
-The horizontal center of each card and its base size increase linearly with the selected dimension's score on the 1–6 scale. Vertical position is computed by the packing algorithm and carries no score. Cards tied on the axis can overlap slightly. Ordinary cards are drawn in increasing order of the sum of all dimension scores, so higher totals appear in front. The rank is one plus the number of successfully scored images in the batch with a strictly higher axis score. Equal scores share a rank.
+The horizontal center of each card and its base side length increase linearly with the selected dimension's score on the 1–6 scale. At canvas widths of at least 1,400 pixels, side lengths range from 80 to 224 pixels before zoom; narrower canvases apply a common responsive scale. Vertical position is computed by the packing algorithm and carries no score. Images are placed in stable identifier order, using deterministic vertical offsets. A pairwise clearance proposes a location, then a rectangle-union check limits the combined overlap with all other thumbnails to 25% of each thumbnail's square area. A conflicting position moves down in 4-pixel steps until it passes. This conservative check keeps actual occlusion within the limit even when interaction changes drawing order; border glows and the separate score profile are outside the thumbnail-area calculation.
 
-Hovered and shortlisted cards grow to the largest base card size in the batch. Shortlisted cards stay above the regular cards and use the sum of all dimension scores to determine their order within the shortlist. The hovered, keyboard-focused, or inspected card temporarily appears above both groups. When inspection ends, it returns to its shortlist or ordinary layer.
+Drawing order has three tiers: the hovered, keyboard-focused, or inspected image is temporarily foremost; selected images appear above all ordinary images; ordinary images form the remaining tier. Within the selected and ordinary tiers, the sum of all dimension scores determines order, with higher totals in front. Stable identifiers break equal totals. Ending inspection restores the selected or ordinary tier; deselecting restores ordinary order once inspection ends. Hovered and selected cards grow in place toward the largest base size in the batch. When that enlargement would exceed the 25% overlap limit, the app reduces the enlargement while preserving the center and score. The rank uses the selected axis alone: one plus the number of successfully scored images with a strictly higher axis score. Equal scores share a rank.
+
+**Fit all** uses the actual packed layout height, rather than a fixed zoom for a given image count. It fits both the full score axis and the vertical bounds, including space for enlargement, with 36 pixels for the tick strip and 64 pixels for the controls. More densely packed collections therefore start at a smaller zoom. This gives an overview of all thumbnails; it does not guarantee that every detail remains readable in a large collection. Zoom in to inspect details. Manual zoom is retained until the next completed scoring batch, axis change, viewport resize, or explicit **Fit all** action. Tick labels and vertical guide lines retain their screen-space size while their horizontal positions follow the zoomed score axis.
 
 ## Configuration
 
@@ -94,6 +96,7 @@ If the picker cannot find a model, check that Ollama is running, use `ollama lis
 ## Development
 
 - `npm run lint` checks the source.
+- `npm test` checks fitting, overlap unions, custom dimensions, and interaction layer priority.
 - `npm run build` builds the frontend.
 - `npm run preview` serves the built frontend together with the scoring API.
 

@@ -1,11 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from 'recharts';
 import { BookOpen, CheckCircle2, Download, Image as ImageIcon, Minus, Plus, RotateCcw, Sparkles, X } from 'lucide-react';
 import EvaluationEditor from './EvaluationEditor.jsx';
 import ScoringRules from './ScoringRules.jsx';
 import { DEFAULT_DIMENSIONS, dimensionError } from './evaluation.js';
 import { MAX_API_KEY_LENGTH, MAX_MODEL_LENGTH, MODEL_PROVIDERS } from './modelProviders.js';
-import { getCardSides, layoutScoredImages } from './scoreLayout.js';
+import { getCardSides, getDisplaySizes, getFitZoom, getImageLayers, layoutScoredImages, MAX_OVERLAP_FRACTION } from './scoreLayout.js';
 import { MAX_ZOOM, MIN_ZOOM, useCanvasZoom } from './useCanvasZoom.js';
 
 const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -242,6 +242,8 @@ export default function VisualRecommendationApp() {
   const [focusedId, setFocusedId] = useState(null);
   const [markedIds, setMarkedIds] = useState([]);
   const [canvasWidth, setCanvasWidth] = useState(900);
+  const [canvasHeight, setCanvasHeight] = useState(600);
+  const lastAutoFit = useRef(null);
   const fileInput = useRef(null);
   const viewport = useRef(null);
   const canvasContent = useRef(null);
@@ -288,6 +290,7 @@ export default function VisualRecommendationApp() {
     const element = viewport.current;
     const observer = new ResizeObserver(() => {
       setCanvasWidth(element.clientWidth);
+      setCanvasHeight(element.clientHeight);
     });
     observer.observe(element);
     return () => observer.disconnect();
@@ -305,15 +308,13 @@ export default function VisualRecommendationApp() {
   const resultDimensions = batch ? batch.dimensions ?? DEFAULT_DIMENSIONS : draftDimensions;
   const axis = batch ? resultDimensions.find(dimension => dimension.id === resultAxisId) ?? resultDimensions[0] : draftAxis;
   const layout = useMemo(() => layoutScoredImages(results, axisWidth, cardSides, axis.id, resultDimensions.map(dimension => dimension.id)), [results, axisWidth, cardSides, axis.id, resultDimensions]);
-  const selectedLayers = useMemo(() => {
-    const marked = new Set(markedIds);
-    const selected = layout.items.filter(image => marked.has(image.id));
-    selected.sort((a, b) => (a.axisScore + a.secondaryTotal) - (b.axisScore + b.secondaryTotal) || a.stackOrder - b.stackOrder);
-    return new Map(selected.map((image, index) => [image.id, layout.items.length + 2 + index]));
-  }, [layout.items, markedIds]);
   const viewingId = profileTarget?.id;
   const viewingImage = layout.items.find(image => image.id === viewingId);
   const previewId = viewingImage ? null : hoveredId ?? focusedId;
+  const imageLayers = useMemo(() => getImageLayers(layout.items, markedIds, viewingId ?? previewId),
+    [layout.items, markedIds, viewingId, previewId]);
+  const displaySizes = useMemo(() => getDisplaySizes(layout.items, layout.hoverSide, imageLayers,
+    [...markedIds, viewingId, previewId]), [layout, imageLayers, markedIds, viewingId, previewId]);
   const running = progress !== null;
   const percent = progress ? Math.floor(progress.processed * 100 / progress.total) : 0;
   const localProvider = provider === 'ollama';
@@ -341,6 +342,27 @@ export default function VisualRecommendationApp() {
   const panRoom = Math.max(0, (canvasWidth - contentWidth) / 2);
   const contentLeft = panRoom + Math.max(-panRoom, Math.min(panRoom, panX));
   const tickX = tick => contentLeft + (axisPadding + (tick - 1) * axisWidth / 5) * zoom;
+
+  const fitAll = useCallback(() => {
+    if (!layout.items.length || !viewport.current) return;
+    setZoom(getFitZoom(canvasWidth, canvasHeight, axisWidth + axisPadding * 2, layout.height, MAX_ZOOM));
+    setPanX(0);
+    setProfileTarget(null);
+    setHoveredId(null);
+    setFocusedId(null);
+    viewport.current.scrollTo(0, 0);
+  }, [layout, canvasWidth, canvasHeight, axisWidth, axisPadding, setZoom, setPanX]);
+
+  const fitKey = JSON.stringify([canvasWidth, canvasHeight, axis.id, results.map(image => [image.id, image.scores])]);
+  useLayoutEffect(() => {
+    if (running) {
+      lastAutoFit.current = null;
+      return;
+    }
+    if (!layout.items.length || lastAutoFit.current === fitKey) return;
+    fitAll();
+    lastAutoFit.current = fitKey;
+  }, [running, fitKey, fitAll, layout.items.length]);
 
   function startCanvasDrag(event) {
     if (running || !layout.items.length || event.pointerType === 'touch' || event.button !== 0 || event.target.closest('button')) return;
@@ -454,6 +476,7 @@ export default function VisualRecommendationApp() {
       axisWidth,
       cardSides,
       layoutHeight: layout.height,
+      canvasView: { zoom, width: canvasWidth, height: canvasHeight, maxOverlapFraction: MAX_OVERLAP_FRACTION },
       images: layout.items.map(image => ({
         id: image.id,
         fileName: image.fileName,
@@ -463,7 +486,7 @@ export default function VisualRecommendationApp() {
         rank: image.rank,
         tied: image.tied,
         selected: markedIds.includes(image.id),
-        layout: { x: image.x, y: image.y, size: image.size, stackOrder: image.stackOrder, secondaryTotal: image.secondaryTotal },
+        layout: { x: image.x, y: image.y, size: image.size, displaySize: displaySizes.get(image.id), stackOrder: image.stackOrder, displayLayer: imageLayers.get(image.id), secondaryTotal: image.secondaryTotal },
       })),
       failures,
     });
@@ -669,15 +692,14 @@ export default function VisualRecommendationApp() {
                     </span>
                   ))}
                 </div>
-                <div className="relative flex-1" style={{ minHeight: Math.max(220, layout.height * zoom + 64) }}>
+                <div className="relative flex-1" style={{ minHeight: Math.max(0, canvasHeight - 36, layout.height * zoom + 64) }}>
                   {TICKS.map(tick => (
                     <span key={tick} className="pointer-events-none absolute inset-y-0 border-l border-dashed border-[#DFDFFB]" style={{ left: tickX(tick) }} />
                   ))}
                   <div ref={canvasContent} className="absolute top-1/2 isolate -translate-y-1/2" style={{ left: contentLeft, width: contentWidth, height: layout.height * zoom }}>
                     <span className="pointer-events-none absolute border-t border-[#DFDFFB]" style={{ left: axisPadding * zoom, top: layout.centerY * zoom, width: axisWidth * zoom }} />
                     {layout.items.map(image => {
-                      const selectedLayer = selectedLayers.get(image.id);
-                      const marked = selectedLayer !== undefined;
+                      const marked = markedIds.includes(image.id);
                       const viewing = image.id === viewingId;
                       const enlarged = marked || viewing || image.id === previewId;
                       return (
@@ -696,9 +718,7 @@ export default function VisualRecommendationApp() {
                             height: image.size * zoom,
                             // Active inspection is above the shortlist; the shortlist is
                             // above ordinary cards, with total-score order within each group.
-                            zIndex: viewing || image.id === previewId
-                              ? layout.items.length * 2 + 3
-                              : selectedLayer ?? image.stackOrder,
+                            zIndex: imageLayers.get(image.id),
                           }}
                           onPointerEnter={event => {
                             if (event.pointerType === 'touch') return;
@@ -717,8 +737,8 @@ export default function VisualRecommendationApp() {
                           }}
                         >
                           <span
-                            className={`image-tile absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-white motion-safe:transition-[width,height] motion-safe:duration-150 ${marked ? 'image-tile-selected' : enlarged || viewing ? 'image-tile-active' : 'border-violet-100'}`}
-                            style={{ width: enlarged ? layout.hoverSide * zoom : '100%', height: enlarged ? layout.hoverSide * zoom : '100%' }}
+                            className={`image-tile absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-white ${marked ? 'image-tile-selected' : enlarged || viewing ? 'image-tile-active' : 'border-violet-100'}`}
+                            style={{ width: displaySizes.get(image.id) * zoom, height: displaySizes.get(image.id) * zoom }}
                           >
                             <img src={image.url} alt="" draggable={false} className="h-full w-full rounded-[inherit] object-contain" loading="lazy" />
                           </span>
@@ -762,9 +782,9 @@ export default function VisualRecommendationApp() {
           {!running && layout.items.length > 0 && (
             <div className="glass-surface absolute bottom-3 left-3 z-20 flex items-center gap-2 rounded-xl px-2 py-1.5">
               <button type="button" aria-label="Zoom out" disabled={zoom <= MIN_ZOOM} onClick={() => setZoom(zoom - 0.1)} className="p-1 disabled:opacity-40"><Minus size={16} /></button>
-              <span className="text-xs tabular-nums">{Math.round(zoom * 100)}%</span>
+              <span className="text-xs tabular-nums">{Number((zoom * 100).toPrecision(3))}%</span>
               <button type="button" aria-label="Zoom in" disabled={zoom >= MAX_ZOOM} onClick={() => setZoom(zoom + 0.1)} className="p-1 disabled:opacity-40"><Plus size={16} /></button>
-              <button type="button" aria-label="Reset zoom" onClick={() => setZoom(1)} className="p-1"><RotateCcw size={15} /></button>
+              <button type="button" aria-label="Fit all images" title="Fit all images" onClick={fitAll} className="flex items-center gap-1 p-1 text-xs"><RotateCcw size={15} />Fit all</button>
             </div>
           )}
 
@@ -780,7 +800,7 @@ export default function VisualRecommendationApp() {
               onMark={() => setMarkedIds(previous => previous.includes(viewingImage.id) ? previous.filter(id => id !== viewingImage.id) : [...previous, viewingImage.id])}
               anchor={profileTarget.anchor}
               canvasRef={viewport}
-              expandedSide={layout.hoverSide * zoom}
+              expandedSide={displaySizes.get(viewingImage.id) * zoom}
             />
           )}
         </div>

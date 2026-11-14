@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-export const MIN_ZOOM = 0.6;
+export const MIN_ZOOM = 0.000001;
 export const MAX_ZOOM = 1.6;
 const clamp = value => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
 
@@ -75,11 +75,11 @@ export function useCanvasZoom(viewport, content) {
     };
   }, [content, viewport]);
 
-  function changeZoom(value) {
+  const changeZoom = useCallback((value) => {
     pendingAnchor.current = null;
     setPanX(0);
     setZoom(clamp(value));
-  }
+  }, []);
 
   return { zoom, setZoom: changeZoom, panX, setPanX };
 }

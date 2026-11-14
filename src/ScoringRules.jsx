@@ -31,7 +31,9 @@ export default function ScoringRules({ dialogRef, settings, dimensions, axis, ba
             <li>When a dimension has scored criteria, add their scores and divide by the number of criteria. Each criterion counts equally.</li>
             <li>For a dimension without scored criteria, the model gives one score and a visual rationale.</li>
             <li>{axis.name || 'The selected dimension'} determines horizontal position, card size, and rank. Each additional point adds the same amount to the card’s side length.</li>
-            <li>Cards with the same axis score can overlap slightly. The card with the higher sum across the other dimensions is drawn in front.</li>
+            <li>Results automatically fit the available canvas after scoring, switching the axis, or resizing the window. Use Fit all to return to the complete overview after zooming or panning.</li>
+            <li>Overlapping thumbnails cover at most 25% of any thumbnail's square area in total. Hovered and selected images enlarge toward the largest thumbnail size, with enlargement limited when needed to retain that visibility.</li>
+            <li>The hovered, keyboard-focused, or inspected image is temporarily foremost. Selected images appear above ordinary images. Within each persistent group, a higher sum across all dimensions appears in front; ending inspection or deselecting restores the corresponding group.</li>
           </ul>
         </section>
         <section aria-label="Rubric details" className="space-y-2">

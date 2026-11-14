@@ -1,14 +1,13 @@
 const MIN_SCORE = 1;
 const MAX_SCORE = 6;
-const MIN_CARD_SIDE = 100;
-const MAX_CARD_SIDE = 280;
+const MIN_CARD_SIDE = 80;
+const MAX_CARD_SIDE = 224;
 const NARROW_CANVAS_WIDTH = 360;
 const DESKTOP_CANVAS_WIDTH = 1400;
 const NARROW_CARD_SCALE = 0.46;
-const CARD_GAP = 8;
 const VERTICAL_PADDING = 16;
-const MAX_HOVER_OVERLAP = 0.2;
-const TIED_CARD_OVERLAP = 0.16;
+export const MAX_OVERLAP_FRACTION = 0.25;
+const PACKING_STEP = 4;
 const DEFAULT_DIMENSIONS = ['aesthetic', 'creativity', 'expectation'];
 
 export function getCardSides(canvasWidth) {
@@ -37,13 +36,7 @@ function nearestFreeY(card, placedCards, hoverSide) {
   const blocked = [];
   for (const other of placedCards) {
     const halfSum = (card.size + other.size) / 2;
-    const baseClearance = card.axisScore === other.axisScore
-      ? halfSum - card.size * TIED_CARD_OVERLAP
-      : halfSum + CARD_GAP;
-    const neighborSide = Math.max(card.size, other.size);
-    // Either card can be enlarged. Keep at least 80% of its neighbor visible.
-    const hoverClearance = (hoverSide + neighborSide) / 2 - neighborSide * MAX_HOVER_OVERLAP;
-    const clearance = Math.max(baseClearance, hoverClearance);
+    const clearance = halfSum - MAX_OVERLAP_FRACTION * Math.min(card.size, other.size);
     if (Math.abs(card.x - other.x) < clearance) {
       blocked.push({ start: other.y - clearance, end: other.y + clearance });
     }
@@ -62,8 +55,93 @@ function nearestFreeY(card, placedCards, hoverSide) {
   }
 
   const conflict = merged.find(({ start, end }) => start < target && end > target);
-  if (!conflict) return target;
-  return target - conflict.start <= conflict.end - target ? conflict.start : conflict.end;
+  let y = !conflict ? target
+    : target - conflict.start <= conflict.end - target ? conflict.start : conflict.end;
+  // Pairwise clearance alone cannot bound the area covered by several neighbors.
+  // Check their union, independently of drawing order, so later selection is safe.
+  while (!withinOverlapLimit({ ...card, y }, placedCards)) y += PACKING_STEP;
+  return y;
+}
+
+function intersects(first, second) {
+  const halfSum = (first.size + second.size) / 2;
+  return Math.abs(first.x - second.x) < halfSum && Math.abs(first.y - second.y) < halfSum;
+}
+
+/** Fraction of a square thumbnail intersected by the union of other thumbnails. */
+export function coveredFraction(card, others) {
+  const rectangles = others.filter(other => intersects(card, other)).map(other => ({
+    left: Math.max(card.x - card.size / 2, other.x - other.size / 2),
+    right: Math.min(card.x + card.size / 2, other.x + other.size / 2),
+    top: Math.max(card.y - card.size / 2, other.y - other.size / 2),
+    bottom: Math.min(card.y + card.size / 2, other.y + other.size / 2),
+  }));
+  const edges = [...new Set(rectangles.flatMap(rectangle => [rectangle.left, rectangle.right]))].sort((a, b) => a - b);
+  let area = 0;
+  for (let index = 1; index < edges.length; index++) {
+    const left = edges[index - 1];
+    const right = edges[index];
+    const intervals = rectangles.filter(rectangle => rectangle.left < right && rectangle.right > left)
+      .map(rectangle => [rectangle.top, rectangle.bottom]).sort((a, b) => a[0] - b[0]);
+    let previousBottom = -Infinity;
+    let height = 0;
+    for (const [top, bottom] of intervals) {
+      height += Math.max(0, bottom - Math.max(top, previousBottom));
+      previousBottom = Math.max(previousBottom, bottom);
+    }
+    area += (right - left) * height;
+  }
+  return area / (card.size * card.size);
+}
+
+function withinOverlapLimit(card, others) {
+  const neighbors = others.filter(other => intersects(card, other));
+  const limit = MAX_OVERLAP_FRACTION + 1e-9;
+  if (coveredFraction(card, neighbors) > limit) return false;
+  // Only intersecting neighbors can acquire extra overlap when this card changes.
+  return neighbors.every(neighbor => coveredFraction(neighbor,
+    [...others.filter(other => other !== neighbor), card]) <= limit);
+}
+
+/** Active inspection > selected > ordinary; totals order each persistent tier. */
+export function getImageLayers(items, selectedIds = [], activeId) {
+  const selected = new Set(selectedIds);
+  return new Map(items.map(image => [image.id,
+    image.id === activeId ? items.length * 2 + 1
+      : image.stackOrder + (selected.has(image.id) ? items.length : 0),
+  ]));
+}
+
+/** Enlarge in place toward the batch maximum while preserving the overlap limit. */
+export function getDisplaySizes(items, maximumSide, layers, enlargedIds = []) {
+  const enlarged = new Set(enlargedIds);
+  const cards = items.map(image => ({ ...image, layer: layers.get(image.id) }));
+  for (const card of [...cards].sort((a, b) => b.layer - a.layer)) {
+    if (!enlarged.has(card.id) || card.size >= maximumSide) continue;
+    const others = cards.filter(other => other !== card);
+    const base = card.size;
+    if (withinOverlapLimit({ ...card, size: maximumSide }, others)) {
+      card.size = maximumSide;
+      continue;
+    }
+    let low = base;
+    let high = maximumSide;
+    for (let step = 0; step < 18; step++) {
+      const size = (low + high) / 2;
+      if (withinOverlapLimit({ ...card, size }, others)) low = size;
+      else high = size;
+    }
+    card.size = low;
+  }
+  return new Map(cards.map(card => [card.id, card.size]));
+}
+
+/** Zoom fits the complete axis and layout, leaving the tick strip and controls free. */
+export function getFitZoom(viewportWidth, viewportHeight, contentWidth, layoutHeight, maximumZoom = 1.6) {
+  if (![viewportWidth, viewportHeight, contentWidth, layoutHeight, maximumZoom].every(Number.isFinite)
+    || contentWidth <= 0 || layoutHeight <= 0 || maximumZoom <= 0) return 1;
+  return Math.min(maximumZoom, Math.max(1, viewportWidth) / contentWidth,
+    Math.max(1, viewportHeight - 36 - 64) / layoutHeight);
 }
 
 export function layoutScoredImages(images, axisWidth, cardSides, axisId = 'aesthetic', dimensionIds = DEFAULT_DIMENSIONS) {
